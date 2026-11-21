@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Student Task Tracker</title>
+  <style>
+    :root {
+      --paper: #fbfaf6;
+      --ink: #1f2a44;
+      --rule: #cfd8ea;
+      --margin: #d9534f;
+      --muted: #6b7690;
+      --done: #8a93a8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #e9edf5;
+      color: var(--ink);
+      line-height: 1.5;
+    }
+    main {
+      max-width: 620px;
+      margin: 32px auto;
+      padding: 28px 24px 24px 64px;
+      background:
+        linear-gradient(to right, transparent 46px, var(--margin) 46px, var(--margin) 48px, transparent 48px),
+        repeating-linear-gradient(to bottom, var(--paper) 0, var(--paper) 43px, var(--rule) 43px, var(--rule) 44px);
+      border-radius: 6px;
+      box-shadow: 0 2px 10px rgba(31, 42, 68, 0.15);
+      min-height: 70vh;
+    }
+    @media (max-width: 680px) { main { margin: 0; border-radius: 0; } }
+    h1 { margin: 0 0 4px; font-size: 1.7rem; line-height: 44px; }
+    .count { margin: 0 0 22px; color: var(--muted); font-size: 0.95rem; line-height: 44px; }
+    form.add { display: flex; gap: 8px; margin: 0 0 22px; }
+    input[type="text"] {
+      flex: 1;
+      padding: 9px 12px;
+      font-size: 1rem;
+      border: 1.5px solid var(--ink);
+      border-radius: 4px;
+      background: #fff;
+    }
+    button {
+      font: inherit;
+      cursor: pointer;
+      padding: 8px 14px;
+      border-radius: 4px;
+      border: 1.5px solid var(--ink);
+      background: var(--ink);
+      color: #fff;
+    }
+    button.quiet { background: transparent; color: var(--ink); }
+    button:focus-visible, input:focus-visible { outline: 3px solid #3d7be0; outline-offset: 2px; }
+    ul { list-style: none; margin: 0; padding: 0; }
+    li { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+    li .title { flex: 1; word-break: break-word; }
+    li.finished .title { color: var(--done); text-decoration: line-through; }
+    li form { margin: 0; }
+    li button { padding: 4px 10px; font-size: 0.9rem; }
+    .empty { color: var(--muted); line-height: 44px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Student Task Tracker</h1>
+    <p class="count">
+      {% set open = tasks | rejectattr("done") | list | length %}
+      {{ open }} to do, {{ tasks | length - open }} finished
+    </p>
+
+    <form class="add" action="/add" method="post">
+      <input type="text" name="title" placeholder="Add a task, e.g. Finish DevOps report" maxlength="120" required aria-label="New task">
+      <button type="submit">Add task</button>
+    </form>
+
+    {% if tasks %}
+    <ul>
+      {% for t in tasks %}
+      <li class="{{ 'finished' if t.done else '' }}">
+        <span class="title">{{ t.title }}</span>
+        {% if not t.done %}
+        <form action="/done/{{ t.id }}" method="post"><button type="submit">Mark done</button></form>
+        {% endif %}
+        <form action="/delete/{{ t.id }}" method="post"><button class="quiet" type="submit">Delete</button></form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">No tasks yet. Add your first one above.</p>
+    {% endif %}
+  </main>
+</body>
+</html>
