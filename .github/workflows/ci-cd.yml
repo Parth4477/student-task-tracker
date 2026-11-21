@@ -1,0 +1,73 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest -v
+
+  build-and-push:
+    name: Build and push Docker image
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/student-task-tracker:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/student-task-tracker:${{ github.sha }}
+
+  deploy:
+    name: Deploy (pull image and run)
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull and run the image from Docker Hub
+        env:
+          IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/student-task-tracker:latest
+        run: |
+          docker pull "$IMAGE"
+          docker run -d --name tracker -p 5000:5000 "$IMAGE"
+
+      - name: Smoke test the running app
+        run: |
+          for i in $(seq 1 30); do
+            curl -fs http://localhost:5000/health && break
+            sleep 1
+          done
+          curl -fs http://localhost:5000/health
+          echo
+          curl -fs -X POST -d "title=deployed by CI/CD" http://localhost:5000/add -o /dev/null
+          curl -fs http://localhost:5000/ | grep "deployed by CI/CD"
